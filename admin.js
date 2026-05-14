@@ -14,7 +14,10 @@ let adminAdmins = [];
 async function adminApiGet(params) {
   showAdminLoader(true);
   try {
-    const url = new URL(CONFIG.API_URL);
+    const base = CONFIG.API_URL.startsWith('http')
+      ? CONFIG.API_URL
+      : window.location.origin + CONFIG.API_URL;
+    const url = new URL(base);
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null) url.searchParams.append(k, String(v));
     });
@@ -31,7 +34,6 @@ async function adminApiGet(params) {
 }
 
 async function adminApiPost(data) {
-  // نرسل عبر GET لتجنب مشكلة CORS
   return await adminApiGet(data);
 }
 
@@ -627,7 +629,7 @@ async function loadStudentsForAtt() {
   if (!result.success) return;
 
   const students = result.data || [];
-  const grid = document.getElementById('attendanceGrid');
+  const grid    = document.getElementById('attendanceGrid');
   const listDiv = document.getElementById('attendanceStudentsList');
 
   if (!students.length) {
@@ -665,12 +667,12 @@ function setAttendance(studentId, status, btn) {
 }
 
 async function saveAttendance() {
-  const teacherId = document.getElementById('attTeacher').value;
-  const teacherEl = document.getElementById('attTeacher');
+  const teacherId   = document.getElementById('attTeacher').value;
+  const teacherEl   = document.getElementById('attTeacher');
   const teacherName = teacherEl.options[teacherEl.selectedIndex]?.text || '';
-  const region  = document.getElementById('attRegion').value;
-  const date    = document.getElementById('attDate').value;
-  const period  = document.getElementById('attPeriod').value;
+  const region      = document.getElementById('attRegion').value;
+  const date        = document.getElementById('attDate').value;
+  const period      = document.getElementById('attPeriod').value;
 
   if (!date)   { adminToast('حدد التاريخ ⚠️', 'warning'); return; }
   if (!period) { adminToast('حدد الفترة ⚠️', 'warning'); return; }
@@ -679,21 +681,12 @@ async function saveAttendance() {
   const students = studentsResult.data || [];
 
   const records = students.map(s => ({
-    studentId:   s['المعرف'],
-    studentName: s['الاسم'],
-    teacherId,
-    teacherName,
-    region,
-    date,
-    period,
-    status: attendanceData[s['المعرف']] || 'غائب',
-    notes: ''
+    studentId: s['المعرف'], studentName: s['الاسم'],
+    teacherId, teacherName, region, date, period,
+    status: attendanceData[s['المعرف']] || 'غائب', notes: ''
   }));
 
-  const result = await adminApiGet({
-    action: 'saveAttendance',
-    records: JSON.stringify(records)
-  });
+  const result = await adminApiGet({action: 'saveAttendance', records: JSON.stringify(records)});
 
   if (result.success) {
     adminToast(result.message, 'success');
@@ -714,24 +707,18 @@ async function exportAllData() {
     adminApiGet({action: 'getTeachers', region: 'all'}),
     adminApiGet({action: 'getAdmins',   region: 'all'})
   ]);
-
   const studHeaders = ['المعرف','الاسم','الجنس','المنطقة','المعلم','المستوى','الهاتف','الحالة'];
   const tchHeaders  = ['المعرف','الاسم','الجنس','المنطقة','التخصص','المؤهل','الهاتف','الحالة'];
   const admHeaders  = ['المعرف','الاسم','الجنس','المنطقة','الدور','الهاتف','الحالة'];
-
   const data = [
-    ['التقرير الشامل - مؤسسة النبأ العظيم'],
-    [],
-    ['قائمة الطلاب'], studHeaders,
-    ...(s.data||[]).map(r => [r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['اسم المعلم'],r['المستوى'],r['الهاتف'],r['الحالة']]),
-    [],
-    ['قائمة المعلمين'], tchHeaders,
-    ...(t.data||[]).map(r => [r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['التخصص'],r['المؤهل'],r['الهاتف'],r['الحالة']]),
-    [],
-    ['قائمة الإداريين'], admHeaders,
-    ...(a.data||[]).map(r => [r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['الدور'],r['الهاتف'],r['الحالة']])
+    ['التقرير الشامل - مؤسسة النبأ العظيم'],[],
+    ['قائمة الطلاب'],studHeaders,
+    ...(s.data||[]).map(r=>[r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['اسم المعلم'],r['المستوى'],r['الهاتف'],r['الحالة']]),
+    [],['قائمة المعلمين'],tchHeaders,
+    ...(t.data||[]).map(r=>[r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['التخصص'],r['المؤهل'],r['الهاتف'],r['الحالة']]),
+    [],['قائمة الإداريين'],admHeaders,
+    ...(a.data||[]).map(r=>[r['المعرف'],r['الاسم'],r['الجنس'],r['المنطقة'],r['الدور'],r['الهاتف'],r['الحالة']])
   ];
-
   exportToExcelAdmin(data, 'التقرير_الشامل', 'التقرير الشامل');
   adminToast('تم تصدير التقرير الشامل ✅', 'success');
 }
@@ -745,8 +732,7 @@ async function exportRegionsReportAdmin() {
     ['المنطقة','الطلاب','المعلمون','الإداريون','الإجمالي'],
     ...(CONFIG.REGIONS||[]).map(r => {
       const s = regionStats[r] || {};
-      return [r, s.students||0, s.teachers||0, s.admins||0,
-        (s.students||0)+(s.teachers||0)+(s.admins||0)];
+      return [r,s.students||0,s.teachers||0,s.admins||0,(s.students||0)+(s.teachers||0)+(s.admins||0)];
     })
   ];
   exportToExcelAdmin(data, 'تقرير_المناطق', 'تقرير المناطق');
@@ -774,30 +760,21 @@ function exportToExcelAdmin(data, filename, title) {
 
   let alt = 0;
   data.forEach(row => {
-    if (!row || !row.length) { html += '<tr><td colspan="10" style="height:8px"></td></tr>'; alt=0; return; }
-    const nonEmpty = row.filter(c => c !== '' && c !== null && c !== undefined);
-    if (nonEmpty.length === 1) {
-      html += `<tr><td colspan="10" class="t">${nonEmpty[0]}</td></tr>`; alt=0; return;
-    }
-    const isHeader = row.every(c => typeof c === 'string') &&
-      (row.includes('الاسم') || row.includes('المعرف') || row.includes('المنطقة'));
-    if (isHeader) {
-      html += '<tr>' + row.map(c => `<td class="sh">${c||''}</td>`).join('') + '</tr>'; alt=0; return;
-    }
-    const cls = alt++ % 2 === 0 ? 'd' : 'da';
-    html += '<tr>' + row.map(c => `<td class="${cls}">${c!==undefined&&c!==null?c:''}</td>`).join('') + '</tr>';
+    if (!row||!row.length){html+='<tr><td colspan="10" style="height:8px"></td></tr>';alt=0;return;}
+    const nonEmpty = row.filter(c=>c!==''&&c!==null&&c!==undefined);
+    if (nonEmpty.length===1){html+=`<tr><td colspan="10" class="t">${nonEmpty[0]}</td></tr>`;alt=0;return;}
+    const isHeader = row.every(c=>typeof c==='string')&&(row.includes('الاسم')||row.includes('المعرف')||row.includes('المنطقة'));
+    if (isHeader){html+='<tr>'+row.map(c=>`<td class="sh">${c||''}</td>`).join('')+'</tr>';alt=0;return;}
+    const cls=alt++%2===0?'d':'da';
+    html+='<tr>'+row.map(c=>`<td class="${cls}">${c!==undefined&&c!==null?c:''}</td>`).join('')+'</tr>';
   });
 
-  html += `</table></body></html>`;
-  const blob = new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `${filename}_${new Date().toISOString().split('T')[0]}.xls`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  html+=`</table></body></html>`;
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${filename}_${new Date().toISOString().split('T')[0]}.xls`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 
 // ==========================================
@@ -806,17 +783,17 @@ function exportToExcelAdmin(data, filename, title) {
 function confirmDelete(type, id, name) {
   document.getElementById('deleteMessage').textContent = `هل تريد حذف "${name}" نهائياً؟`;
   document.getElementById('confirmDeleteBtn').onclick = async () => {
-    const actions = {students:'deleteStudent', teachers:'deleteTeacher', admins:'deleteAdmin'};
+    const actions = {students:'deleteStudent',teachers:'deleteTeacher',admins:'deleteAdmin'};
     const result = await adminApiPost({action: actions[type], id});
     if (result.success) {
       adminToast(result.message, 'success');
       closeAdminModal('deleteModal');
-      if (type === 'students') adminLoadStudents();
-      if (type === 'teachers') { adminLoadTeachers(); loadAllTeachersForSelect(); }
-      if (type === 'admins')   adminLoadAdmins();
+      if (type==='students') adminLoadStudents();
+      if (type==='teachers'){adminLoadTeachers();loadAllTeachersForSelect();}
+      if (type==='admins')  adminLoadAdmins();
       loadAdminStats();
     } else {
-      adminToast(result.message || 'خطأ في الحذف', 'error');
+      adminToast(result.message||'خطأ في الحذف','error');
     }
   };
   openAdminModal('deleteModal');
@@ -825,20 +802,13 @@ function confirmDelete(type, id, name) {
 // ==========================================
 // المودال
 // ==========================================
-function openAdminModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
-}
-
-function closeAdminModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('active');
-}
+function openAdminModal(id)  { const el=document.getElementById(id); if(el) el.classList.add('active'); }
+function closeAdminModal(id) { const el=document.getElementById(id); if(el) el.classList.remove('active'); }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', function(e) {
-      if (e.target === this) this.classList.remove('active');
+      if (e.target===this) this.classList.remove('active');
     });
   });
 });
@@ -846,19 +816,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 // الإشعارات
 // ==========================================
-function adminToast(message, type = 'info') {
+function adminToast(message, type='info') {
   const container = document.getElementById('adminToastContainer');
   if (!container) return;
-  const icons = {success:'✅', error:'❌', warning:'⚠️', info:'ℹ️'};
+  const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `<span style="font-size:20px">${icons[type]||'ℹ️'}</span><span>${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
+    toast.style.opacity='0'; toast.style.transition='opacity 0.3s';
+    setTimeout(()=>toast.remove(),300);
+  },4000);
 }
 
 // ==========================================
