@@ -3,7 +3,6 @@
 // صفحة الزوار
 // ==========================================
 
-
 // هذا الملف يعمل مع config.js — تأكد أن config.js محمل قبله في index.html
 
 let currentRegion = 'all';
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStudentsForSelects();
   loadTeachersForSelects();
 
-  // تحديث تلقائي كل 30 ثانية
   setInterval(() => {
     loadStats();
     const stuSec = document.getElementById('section-students');
@@ -30,16 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// دوال الـ API
+// دوال الـ API — التعديل الرئيسي هنا ✅
 // ==========================================
 async function apiGet(params) {
   showLoader(true);
   try {
-    const url = new URL(CONFIG.API_URL);
-    Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+    const base = CONFIG.API_URL.startsWith('http')
+      ? CONFIG.API_URL
+      : window.location.origin + CONFIG.API_URL;
+    const url = new URL(base);
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) url.searchParams.append(k, String(v));
+    });
     const response = await fetch(url.toString());
-    const data = await response.json();
-    return data;
+    const text = await response.text();
+    try { return JSON.parse(text); }
+    catch(e) { return { success: false, message: 'خطأ في الرد' }; }
   } catch (err) {
     showToast('خطأ في الاتصال بالخادم', 'error');
     return { success: false, message: err.message };
@@ -613,11 +617,7 @@ async function openGroupTeacherReport() {
                 <td><strong>${t['الاسم'] || '-'}</strong></td>
                 <td>${t['المنطقة'] || '-'}</td>
                 <td>${t['التخصص'] || '-'}</td>
-                <td>
-                  <span style="background:#D5F5E3;color:#1E8449;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700">
-                    ${t.studentsCount || 0}
-                  </span>
-                </td>
+                <td><span style="background:#D5F5E3;color:#1E8449;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700">${t.studentsCount || 0}</span></td>
                 <td>
                   <div class="attendance-bar">
                     <div class="bar-track">
@@ -627,11 +627,7 @@ async function openGroupTeacherReport() {
                     <span style="font-size:12px;font-weight:700">${t.attendanceRate || 0}%</span>
                   </div>
                 </td>
-                <td>
-                  <span class="status-badge ${t['الحالة'] === 'نشط' ? 'status-active' : 'status-inactive'}">
-                    ${t['الحالة'] || '-'}
-                  </span>
-                </td>
+                <td><span class="status-badge ${t['الحالة'] === 'نشط' ? 'status-active' : 'status-inactive'}">${t['الحالة'] || '-'}</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -651,8 +647,8 @@ async function openAttendanceReport() {
 
   const records = result.data || [];
   const present = records.filter(r => r['الحالة'] === 'حاضر').length;
-  const absent = records.filter(r => r['الحالة'] !== 'حاضر').length;
-  const rate = records.length > 0 ? Math.round((present / records.length) * 100) : 0;
+  const absent  = records.filter(r => r['الحالة'] !== 'حاضر').length;
+  const rate    = records.length > 0 ? Math.round((present / records.length) * 100) : 0;
 
   const reportContent = document.getElementById('reportContent');
   if (!reportContent) return;
@@ -678,11 +674,7 @@ async function openAttendanceReport() {
                   <td>${r['المنطقة'] || '-'}</td>
                   <td>${r['التاريخ'] || '-'}</td>
                   <td>${r['الفترة'] || '-'}</td>
-                  <td>
-                    <span class="status-badge ${r['الحالة'] === 'حاضر' ? 'status-active' : 'status-inactive'}">
-                      ${r['الحالة'] || '-'}
-                    </span>
-                  </td>
+                  <td><span class="status-badge ${r['الحالة'] === 'حاضر' ? 'status-active' : 'status-inactive'}">${r['الحالة'] || '-'}</span></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -703,8 +695,8 @@ async function exportRegionsReport() {
     ['المنطقة', 'عدد الطلاب', 'عدد المعلمين', 'عدد الإداريين', 'الإجمالي'],
     ...CONFIG.REGIONS.map(r => {
       const s = (currentStats?.regionStats && currentStats.regionStats[r]) || {};
-      return [r, s.students || 0, s.teachers || 0, s.admins || 0,
-        (s.students || 0) + (s.teachers || 0) + (s.admins || 0)];
+      return [r, s.students||0, s.teachers||0, s.admins||0,
+        (s.students||0)+(s.teachers||0)+(s.admins||0)];
     })
   ];
   exportToExcel(wsData, 'تقرير_المناطق', 'مؤسسة النبأ العظيم - تقرير مقارنة المناطق');
@@ -712,215 +704,153 @@ async function exportRegionsReport() {
 }
 
 // ==========================================
-// تصدير Excel - الطلاب والمعلمين
+// تصدير Excel
 // ==========================================
 function exportStudentsExcel() {
   if (!allStudents.length) { showToast('لا توجد بيانات لتصديرها', 'warning'); return; }
-
-  const headers = ['المعرف', 'الاسم', 'الجنس', 'المنطقة', 'العنوان', 'الهاتف',
-    'هاتف ولي الأمر', 'المعلم', 'المستوى', 'تاريخ التسجيل', 'الحالة', 'نسبة الحضور'];
-  const data = allStudents.map(s => [
-    s['المعرف'], s['الاسم'], s['الجنس'], s['المنطقة'], s['العنوان'],
-    s['الهاتف'], s['هاتف ولي الأمر'], s['اسم المعلم'], s['المستوى'],
-    s['تاريخ التسجيل'], s['الحالة'], (s.attendanceRate || 0) + '%'
-  ]);
-
-  exportToExcel([headers, ...data], 'بيانات_الطلاب',
-    `قائمة الطلاب - ${new Date().toLocaleDateString('ar-SA')}`);
-  showToast('تم تصدير بيانات الطلاب بنجاح', 'success');
+  const headers = ['المعرف','الاسم','الجنس','المنطقة','العنوان','الهاتف','هاتف ولي الأمر','المعلم','المستوى','تاريخ التسجيل','الحالة','نسبة الحضور'];
+  const data = allStudents.map(s => [s['المعرف'],s['الاسم'],s['الجنس'],s['المنطقة'],s['العنوان'],s['الهاتف'],s['هاتف ولي الأمر'],s['اسم المعلم'],s['المستوى'],s['تاريخ التسجيل'],s['الحالة'],(s.attendanceRate||0)+'%']);
+  exportToExcel([headers,...data],'بيانات_الطلاب',`قائمة الطلاب - ${new Date().toLocaleDateString('ar-SA')}`);
+  showToast('تم تصدير بيانات الطلاب بنجاح','success');
 }
 
 function exportTeachersExcel() {
-  if (!allTeachers.length) { showToast('لا توجد بيانات لتصديرها', 'warning'); return; }
-
-  const headers = ['المعرف', 'الاسم', 'الجنس', 'المنطقة', 'الهاتف',
-    'التخصص', 'المؤهل', 'تاريخ الانضمام', 'الحالة', 'عدد الطلاب', 'نسبة الحضور'];
-  const data = allTeachers.map(t => [
-    t['المعرف'], t['الاسم'], t['الجنس'], t['المنطقة'], t['الهاتف'],
-    t['التخصص'], t['المؤهل'], t['تاريخ الانضمام'], t['الحالة'],
-    t.studentsCount || 0, (t.attendanceRate || 0) + '%'
-  ]);
-
-  exportToExcel([headers, ...data], 'بيانات_المعلمين',
-    `قائمة المعلمين - ${new Date().toLocaleDateString('ar-SA')}`);
-  showToast('تم تصدير بيانات المعلمين بنجاح', 'success');
+  if (!allTeachers.length) { showToast('لا توجد بيانات لتصديرها','warning'); return; }
+  const headers = ['المعرف','الاسم','الجنس','المنطقة','الهاتف','التخصص','المؤهل','تاريخ الانضمام','الحالة','عدد الطلاب','نسبة الحضور'];
+  const data = allTeachers.map(t => [t['المعرف'],t['الاسم'],t['الجنس'],t['المنطقة'],t['الهاتف'],t['التخصص'],t['المؤهل'],t['تاريخ الانضمام'],t['الحالة'],t.studentsCount||0,(t.attendanceRate||0)+'%']);
+  exportToExcel([headers,...data],'بيانات_المعلمين',`قائمة المعلمين - ${new Date().toLocaleDateString('ar-SA')}`);
+  showToast('تم تصدير بيانات المعلمين بنجاح','success');
 }
 
 async function exportSingleStudentExcel(id) {
   if (!id) id = document.getElementById('reportStudentSelect')?.value;
-  if (!id) { showToast('اختر طالباً أولاً', 'warning'); return; }
-
-  const studentsResult = await apiGet({ action: 'getStudents', region: 'all' });
-  const student = (studentsResult.data || []).find(s => s['المعرف'] === id);
+  if (!id) { showToast('اختر طالباً أولاً','warning'); return; }
+  const studentsResult = await apiGet({action:'getStudents',region:'all'});
+  const student = (studentsResult.data||[]).find(s => s['المعرف']===id);
   if (!student) return;
-
-  const attResult = await apiGet({ action: 'getAttendance', studentId: id });
-  const attendance = attResult.data || [];
-  const present = attendance.filter(a => a['الحالة'] === 'حاضر').length;
+  const attResult = await apiGet({action:'getAttendance',studentId:id});
+  const attendance = attResult.data||[];
+  const present = attendance.filter(a=>a['الحالة']==='حاضر').length;
   const total = attendance.length;
-  const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-
+  const rate = total>0?Math.round((present/total)*100):0;
   const wsData = [
-    ['تقرير الطالب - مؤسسة النبأ العظيم', '', '', ''],
-    ['الاسم:', student['الاسم'], 'المنطقة:', student['المنطقة']],
-    ['المعلم:', student['اسم المعلم'] || '-', 'المستوى:', student['المستوى'] || '-'],
-    ['الهاتف:', student['الهاتف'] || '-', 'الحالة:', student['الحالة']],
-    ['نسبة الحضور:', rate + '%', '', ''],
-    ['', '', '', ''],
-    ['إجمالي الجلسات:', total, 'حاضر:', present],
-    ['غائب:', total - present, '', ''],
-    ['', '', '', ''],
-    ['سجل الحضور التفصيلي', '', '', ''],
-    ['التاريخ', 'الفترة', 'الحالة', 'ملاحظات'],
-    ...attendance.map(a => [a['التاريخ'], a['الفترة'], a['الحالة'], a['ملاحظات'] || ''])
+    ['تقرير الطالب - مؤسسة النبأ العظيم','','',''],
+    ['الاسم:',student['الاسم'],'المنطقة:',student['المنطقة']],
+    ['المعلم:',student['اسم المعلم']||'-','المستوى:',student['المستوى']||'-'],
+    ['الهاتف:',student['الهاتف']||'-','الحالة:',student['الحالة']],
+    ['نسبة الحضور:',rate+'%','',''],
+    ['','','',''],
+    ['إجمالي الجلسات:',total,'حاضر:',present],
+    ['غائب:',total-present,'',''],
+    ['','','',''],
+    ['سجل الحضور التفصيلي','','',''],
+    ['التاريخ','الفترة','الحالة','ملاحظات'],
+    ...attendance.map(a=>[a['التاريخ'],a['الفترة'],a['الحالة'],a['ملاحظات']||''])
   ];
-
-  exportToExcel(wsData, `تقرير_${student['الاسم']}`, `تقرير الطالب: ${student['الاسم']}`);
-  showToast('تم تصدير التقرير بنجاح', 'success');
+  exportToExcel(wsData,`تقرير_${student['الاسم']}`,`تقرير الطالب: ${student['الاسم']}`);
+  showToast('تم تصدير التقرير بنجاح','success');
 }
 
 async function exportSingleTeacherExcel(id) {
   if (!id) id = document.getElementById('reportTeacherSelect')?.value;
-  if (!id) { showToast('اختر معلماً أولاً', 'warning'); return; }
-
-  const teachersResult = await apiGet({ action: 'getTeachers', region: 'all' });
-  const teacher = (teachersResult.data || []).find(t => t['المعرف'] === id);
+  if (!id) { showToast('اختر معلماً أولاً','warning'); return; }
+  const teachersResult = await apiGet({action:'getTeachers',region:'all'});
+  const teacher = (teachersResult.data||[]).find(t=>t['المعرف']===id);
   if (!teacher) return;
-
-  const studentsResult = await apiGet({ action: 'getStudents', teacherId: id, region: 'all' });
-  const students = studentsResult.data || [];
-
+  const studentsResult = await apiGet({action:'getStudents',teacherId:id,region:'all'});
+  const students = studentsResult.data||[];
   const wsData = [
-    ['تقرير المعلم - مؤسسة النبأ العظيم', '', '', ''],
-    ['الاسم:', teacher['الاسم'], 'المنطقة:', teacher['المنطقة']],
-    ['التخصص:', teacher['التخصص'] || '-', 'المؤهل:', teacher['المؤهل'] || '-'],
-    ['الهاتف:', teacher['الهاتف'] || '-', 'الحالة:', teacher['الحالة']],
-    ['عدد الطلاب:', students.length, '', ''],
-    ['', '', '', ''],
-    ['قائمة الطلاب', '', '', ''],
-    ['الاسم', 'المنطقة', 'المستوى', 'الحالة'],
-    ...students.map(s => [s['الاسم'], s['المنطقة'], s['المستوى'] || '-', s['الحالة']])
+    ['تقرير المعلم - مؤسسة النبأ العظيم','','',''],
+    ['الاسم:',teacher['الاسم'],'المنطقة:',teacher['المنطقة']],
+    ['التخصص:',teacher['التخصص']||'-','المؤهل:',teacher['المؤهل']||'-'],
+    ['الهاتف:',teacher['الهاتف']||'-','الحالة:',teacher['الحالة']],
+    ['عدد الطلاب:',students.length,'',''],
+    ['','','',''],
+    ['قائمة الطلاب','','',''],
+    ['الاسم','المنطقة','المستوى','الحالة'],
+    ...students.map(s=>[s['الاسم'],s['المنطقة'],s['المستوى']||'-',s['الحالة']])
   ];
-
-  exportToExcel(wsData, `تقرير_${teacher['الاسم']}`, `تقرير المعلم: ${teacher['الاسم']}`);
-  showToast('تم تصدير التقرير بنجاح', 'success');
+  exportToExcel(wsData,`تقرير_${teacher['الاسم']}`,`تقرير المعلم: ${teacher['الاسم']}`);
+  showToast('تم تصدير التقرير بنجاح','success');
 }
 
-// ==========================================
-// دالة التصدير إلى Excel المصممة
-// ==========================================
 function exportToExcel(data, filename, title) {
-  let html = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office"
-          xmlns:x="urn:schemas-microsoft-com:office:excel"
-          xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta charset="UTF-8">
-      <!--[if gte mso 9]><xml>
-        <x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-          <x:Name>البيانات</x:Name>
-          <x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions>
-        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
-      </xml><![endif]-->
-      <style>
-        body{font-family:Arial;direction:rtl}
-        table{border-collapse:collapse;width:100%}
-        .title-row td{background:#1B4F72;color:white;font-size:15px;font-weight:bold;padding:12px;text-align:center}
-        .header-row td{background:#2E86C1;color:white;font-weight:bold;padding:8px 12px;border:1px solid #1B4F72;text-align:center}
-        .data-row td{padding:7px 12px;border:1px solid #D5D8DC;text-align:right}
-        .data-row-alt td{padding:7px 12px;border:1px solid #D5D8DC;text-align:right;background:#EBF5FB}
-        .info-key td:first-child,.info-key td:nth-child(3){background:#1E8449;color:white;font-weight:bold;padding:7px 12px}
-        .info-key td{padding:7px 12px;border:1px solid #D5D8DC}
-        .section-title td{background:#D4AC0D;color:#2C3E50;font-weight:bold;font-size:14px;padding:8px 12px}
-      </style>
-    </head>
-    <body><table>
-    <tr class="title-row">
-      <td colspan="10">🌟 مؤسسة النبأ العظيم | ${title} | ${new Date().toLocaleDateString('ar-SA')}</td>
-    </tr>
-  `;
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="UTF-8">
+  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+    <x:Name>البيانات</x:Name>
+    <x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions>
+  </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+  <style>
+    body{font-family:Arial;direction:rtl}
+    table{border-collapse:collapse;width:100%}
+    .title-row td{background:#1B4F72;color:white;font-size:15px;font-weight:bold;padding:12px;text-align:center}
+    .header-row td{background:#2E86C1;color:white;font-weight:bold;padding:8px 12px;border:1px solid #1B4F72;text-align:center}
+    .data-row td{padding:7px 12px;border:1px solid #D5D8DC;text-align:right}
+    .data-row-alt td{padding:7px 12px;border:1px solid #D5D8DC;text-align:right;background:#EBF5FB}
+    .info-key td:first-child,.info-key td:nth-child(3){background:#1E8449;color:white;font-weight:bold;padding:7px 12px}
+    .info-key td{padding:7px 12px;border:1px solid #D5D8DC}
+    .section-title td{background:#D4AC0D;color:#2C3E50;font-weight:bold;font-size:14px;padding:8px 12px}
+  </style></head><body><table>
+  <tr class="title-row"><td colspan="10">🌟 مؤسسة النبأ العظيم | ${title} | ${new Date().toLocaleDateString('ar-SA')}</td></tr>`;
 
   let rowIndex = 0;
-  let inTable = false;
-
   data.forEach(row => {
-    if (!row || row.every(c => c === '' || c === null || c === undefined)) {
+    if (!row || row.every(c => c===''||c===null||c===undefined)) {
       html += '<tr><td colspan="10" style="height:8px;border:none"></td></tr>';
-      inTable = false;
-      rowIndex = 0;
-      return;
+      rowIndex = 0; return;
     }
+    const nonEmpty = row.filter(c => c!==''&&c!==null&&c!==undefined);
+    const isInfoRow    = typeof row[0]==='string' && row[0].endsWith(':');
+    const isSectionTitle = nonEmpty.length===1 && typeof nonEmpty[0]==='string' && !isInfoRow;
+    const isHeaderRow  = !isInfoRow && row.every(c=>typeof c==='string') &&
+      (row.includes('الاسم')||row.includes('المعرف')||row.includes('التاريخ'));
 
-    const nonEmpty = row.filter(c => c !== '' && c !== null && c !== undefined);
-    const isSectionTitle = nonEmpty.length === 1 && typeof nonEmpty[0] === 'string';
-    const isInfoRow = typeof row[0] === 'string' && row[0].endsWith(':');
-    const isHeaderRow = row.every(c => typeof c === 'string') &&
-      (row[0] === 'الاسم' || row[0] === 'التاريخ' || row[0] === 'المعرف' ||
-       row[0] === 'المنطقة' || row[0] === 'الاسم:' || row[0] === 'الاسم الكامل');
-
-    if (isSectionTitle && !isInfoRow) {
-      html += `<tr class="section-title"><td colspan="10">${nonEmpty[0]}</td></tr>`;
-      inTable = false;
-      rowIndex = 0;
-    } else if (isHeaderRow && !isInfoRow) {
-      html += '<tr class="header-row">' +
-        row.map(c => `<td>${c !== undefined ? c : ''}</td>`).join('') +
-        '</tr>';
-      inTable = true;
-      rowIndex = 0;
+    if (isSectionTitle) {
+      html += `<tr class="section-title"><td colspan="10">${nonEmpty[0]}</td></tr>`; rowIndex=0;
+    } else if (isHeaderRow) {
+      html += '<tr class="header-row">'+row.map(c=>`<td>${c||''}</td>`).join('')+'</tr>'; rowIndex=0;
     } else if (isInfoRow) {
-      html += '<tr class="info-key">' +
-        row.map(c => `<td>${c !== undefined ? c : ''}</td>`).join('') +
-        '</tr>';
+      html += '<tr class="info-key">'+row.map(c=>`<td>${c!==undefined?c:''}</td>`).join('')+'</tr>';
     } else {
-      const cls = rowIndex % 2 === 0 ? 'data-row' : 'data-row-alt';
-      html += `<tr class="${cls}">` +
-        row.map(c => `<td>${c !== undefined && c !== null ? c : ''}</td>`).join('') +
-        '</tr>';
-      rowIndex++;
+      const cls = rowIndex++%2===0?'data-row':'data-row-alt';
+      html += `<tr class="${cls}">`+row.map(c=>`<td>${c!==undefined&&c!==null?c:''}</td>`).join('')+'</tr>';
     }
   });
 
-  html += `</table>
-    <p style="color:#7F8C8D;font-size:11px;text-align:center;margin-top:15px">
-      تم إنشاء هذا التقرير بواسطة نظام مؤسسة النبأ العظيم الإلكتروني
-    </p>
-  </body></html>`;
+  html += `</table><p style="color:#7F8C8D;font-size:11px;text-align:center;margin-top:15px">
+    تم إنشاء هذا التقرير بواسطة نظام مؤسسة النبأ العظيم الإلكتروني
+  </p></body></html>`;
 
-  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}_${new Date().toISOString().split('T')[0]}.xls`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const blob = new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`${filename}_${new Date().toISOString().split('T')[0]}.xls`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
 // ==========================================
 // عرض التفاصيل
 // ==========================================
 async function viewStudentDetails(id) {
-  const result = await apiGet({ action: 'getStudents', region: 'all' });
-  const student = (result.data || []).find(s => s['المعرف'] === id);
+  const result = await apiGet({action:'getStudents',region:'all'});
+  const student = (result.data||[]).find(s=>s['المعرف']===id);
   if (!student) return;
-
   const reportSelect = document.getElementById('reportStudentSelect');
   if (reportSelect) reportSelect.value = id;
-
   showSection('reports');
   await generateStudentReport();
 }
 
 async function viewTeacherDetails(id) {
-  const result = await apiGet({ action: 'getTeachers', region: 'all' });
-  const teacher = (result.data || []).find(t => t['المعرف'] === id);
+  const result = await apiGet({action:'getTeachers',region:'all'});
+  const teacher = (result.data||[]).find(t=>t['المعرف']===id);
   if (!teacher) return;
-
   const reportSelect = document.getElementById('reportTeacherSelect');
   if (reportSelect) reportSelect.value = id;
-
   showSection('reports');
   await generateTeacherReport();
 }
@@ -928,20 +858,13 @@ async function viewTeacherDetails(id) {
 // ==========================================
 // المودال
 // ==========================================
-function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('active');
-}
+function openModal(id)  { const el=document.getElementById(id); if(el) el.classList.add('active'); }
+function closeModal(id) { const el=document.getElementById(id); if(el) el.classList.remove('active'); }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', function (e) {
-      if (e.target === this) this.classList.remove('active');
+    overlay.addEventListener('click', function(e) {
+      if (e.target===this) this.classList.remove('active');
     });
   });
 });
@@ -949,28 +872,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 // الإشعارات Toast
 // ==========================================
-function showToast(message, type = 'info') {
+function showToast(message, type='info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
-
-  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span style="font-size:20px">${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+  toast.innerHTML = `<span style="font-size:20px">${icons[type]||'ℹ️'}</span><span>${message}</span>`;
   container.appendChild(toast);
-
   setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
+    toast.style.opacity='0'; toast.style.transition='opacity 0.3s';
+    setTimeout(()=>toast.remove(),300);
+  },4000);
 }
 
 // ==========================================
 // شريط التحميل
 // ==========================================
 let loadingCount = 0;
-
 function showLoader(show) {
   loadingCount += show ? 1 : -1;
   loadingCount = Math.max(0, loadingCount);
@@ -978,8 +897,5 @@ function showLoader(show) {
   if (loader) loader.style.display = loadingCount > 0 ? 'block' : 'none';
 }
 
-// ==========================================
-// الطباعة
-// ==========================================
 function printStudentReport() { window.print(); }
 function printTeacherReport() { window.print(); }
