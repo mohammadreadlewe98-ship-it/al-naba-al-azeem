@@ -3,7 +3,6 @@
 // صفحة الزوار
 // ==========================================
 
-const CONFIG_API = 'https://script.google.com/macros/s/AKfycbwRX3-G0t_0B83Vg9vBy3X7nPUUgfAdLJrSaz-lon1oQWBazCG_Xg3pFS-POt6LrCQ6Ew/exec';
 
 // هذا الملف يعمل مع config.js — تأكد أن config.js محمل قبله في index.html
 
