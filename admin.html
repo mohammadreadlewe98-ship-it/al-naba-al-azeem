@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم - مؤسسة النبأ العظيم</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
+</head>
+<body>
+
+<!-- ==================== صفحة تسجيل الدخول ==================== -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <img src="logo.png" alt="النبأ العظيم" class="login-logo"
+         onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%231B4F72\' width=\'100\' height=\'100\' rx=\'50\'/><text y=\'60\' x=\'50\' text-anchor=\'middle\' fill=\'gold\' font-size=\'40\'>ن</text></svg>'">
+    <h2 class="login-title">مؤسسة النبأ العظيم</h2>
+    <p class="login-subtitle">لوحة إدارة النظام</p>
+    
+    <div class="form-group">
+      <label class="form-label">كلمة مرور المدير</label>
+      <input type="password" id="adminPassword" class="form-input" 
+             placeholder="أدخل كلمة المرور" 
+             onkeypress="if(event.key==='Enter') doLogin()">
+    </div>
+    
+    <button class="btn btn-primary btn-lg" onclick="doLogin()" style="width:100%; justify-content:center">
+      🔐 تسجيل الدخول
+    </button>
+    
+    <p style="margin-top:15px; font-size:13px; color:var(--text-gray)">
+      للزوار: <a href="index.html" style="color:var(--primary)">اذهب للصفحة الرئيسية</a>
+    </p>
+  </div>
+</div>
+
+<!-- ==================== لوحة التحكم ==================== -->
+<div id="adminPanel" style="display:none">
+  <div class="admin-layout">
+    
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="النبأ العظيم"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%231B4F72\' width=\'100\' height=\'100\' rx=\'50\'/><text y=\'60\' x=\'50\' text-anchor=\'middle\' fill=\'gold\' font-size=\'40\'>ن</text></svg>'">
+        <h2>مؤسسة النبأ العظيم</h2>
+        <p>لوحة الإدارة</p>
+      </div>
+      
+      <ul class="sidebar-menu">
+        <li>
+          <a onclick="adminShowSection('dashboard')" class="active" id="menu-dashboard">
+            <div class="menu-icon">📊</div> لوحة المعلومات
+          </a>
+        </li>
+        <li>
+          <a onclick="adminShowSection('students')" id="menu-students">
+            <div class="menu-icon">👨‍🎓</div> إدارة الطلاب
+          </a>
+        </li>
+        <li>
+          <a onclick="adminShowSection('teachers')" id="menu-teachers">
+            <div class="menu-icon">👨‍🏫</div> إدارة المعلمين
+          </a>
+        </li>
+        <li>
+          <a onclick="adminShowSection('admins')" id="menu-admins">
+            <div class="menu-icon">👔</div> إدارة الإداريين
+          </a>
+        </li>
+        <li>
+          <a onclick="adminShowSection('attendance')" id="menu-attendance">
+            <div class="menu-icon">✅</div> تسجيل الحضور
+          </a>
+        </li>
+        <li>
+          <a onclick="adminShowSection('reports')" id="menu-reports">
+            <div class="menu-icon">📋</div> التقارير
+          </a>
+        </li>
+        <li style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px">
+          <a href="index.html">
+            <div class="menu-icon">🌐</div> صفحة الزوار
+          </a>
+        </li>
+        <li>
+          <a onclick="doLogout()">
+            <div class="menu-icon">🚪</div> تسجيل الخروج
+          </a>
+        </li>
+      </ul>
+    </aside>
+    
+    <!-- المحتوى -->
+    <main class="admin-content">
+      
+      <!-- شريط أعلى -->
+      <div class="admin-topbar">
+        <div style="display:flex; align-items:center; gap:10px">
+          <button onclick="toggleSidebar()" style="display:none; background:none; border:none; font-size:24px; cursor:pointer" id="menuToggle">☰</button>
+          <h2 id="adminPageTitle">لوحة المعلومات</h2>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:13px; color:var(--text-gray)" id="lastUpdate"></span>
+          <button class="btn btn-sm btn-primary" onclick="refreshAll()">🔄 تحديث</button>
+        </div>
+      </div>
+
+      <!-- إشعارات -->
+      <div class="toast-container" id="adminToastContainer"></div>
+
+      <!-- شريط التحميل -->
+      <div id="adminProgressLoader" class="progress-loader" style="display:none"></div>
+      
+      <!-- ==================== Dashboard ==================== -->
+      <div id="admin-section-dashboard">
+        <div class="stats-grid" id="adminStatsGrid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+        <div style="padding:0 30px 15px">
+          <div class="section-title">📍 إحصائيات المناطق</div>
+        </div>
+        <div class="regions-grid" id="adminRegionsGrid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+      
+      <!-- ==================== قسم الطلاب ==================== -->
+      <div id="admin-section-students" style="display:none" class="data-section">
+        <div class="section-header">
+          <div class="section-title">👨‍🎓 إدارة الطلاب</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <select id="adminStudentRegion" class="form-input" style="width:150px" onchange="adminLoadStudents()">
+              <option value="all">كل المناطق</option>
+              <option value="دمشق">دمشق</option>
+              <option value="ريف دمشق">ريف دمشق</option>
+              <option value="حمص">حمص</option>
+              <option value="حماة">حماة</option>
+              <option value="دير الزور">دير الزور</option>
+              <option value="إدلب">إدلب</option>
+              <option value="درعا">درعا</option>
+            </select>
+            <button class="btn btn-success" onclick="openAddStudentModal()">➕ إضافة طالب</button>
+            <button class="btn btn-gold" onclick="exportStudentsAdmin()">📥 تصدير Excel</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <div class="table-toolbar">
+            <input type="text" id="adminStudentSearch" class="search-input" 
+                   placeholder="🔍 ابحث..." oninput="filterAdminStudents()">
+          </div>
+          <div id="adminStudentsTable">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ==================== قسم المعلمين ==================== -->
+      <div id="admin-section-teachers" style="display:none" class="data-section">
+        <div class="section-header">
+          <div class="section-title">👨‍🏫 إدارة المعلمين</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <select id="adminTeacherRegion" class="form-input" style="width:150px" onchange="adminLoadTeachers()">
+              <option value="all">كل المناطق</option>
+              <option value="دمشق">دمشق</option>
+              <option value="ريف دمشق">ريف دمشق</option>
+              <option value="حمص">حمص</option>
+              <option value="حماة">حماة</option>
+              <option value="دير الزور">دير الزور</option>
+              <option value="إدلب">إدلب</option>
+              <option value="درعا">درعا</option>
+            </select>
+            <button class="btn btn-success" onclick="openAddTeacherModal()">➕ إضافة معلم</button>
+            <button class="btn btn-gold" onclick="exportTeachersAdmin()">📥 تصدير Excel</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <div class="table-toolbar">
+            <input type="text" id="adminTeacherSearch" class="search-input" 
+                   placeholder="🔍 ابحث..." oninput="filterAdminTeachers()">
+          </div>
+          <div id="adminTeachersTable">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ==================== قسم الإداريين ==================== -->
+      <div id="admin-section-admins" style="display:none" class="data-section">
+        <div class="section-header">
+          <div class="section-title">👔 إدارة الإداريين</div>
+          <div style="display:flex; gap:10px">
+            <button class="btn btn-success" onclick="openAddAdminModal()">➕ إضافة إداري</button>
+            <button class="btn btn-gold" onclick="exportAdminsAdmin()">📥 تصدير Excel</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <div id="adminAdminsTable">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ==================== تسجيل الحضور ==================== -->
+      <div id="admin-section-attendance" style="display:none" class="data-section">
+        <div class="section-header">
+          <div class="section-title">✅ تسجيل الحضور</div>
+        </div>
+        
+        <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); margin-bottom:20px">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">المنطقة</label>
+              <select id="attRegion" class="form-select" onchange="loadTeachersForAtt()">
+                <option value="">-- اختر المنطقة --</option>
+                <option value="دمشق">دمشق</option>
+                <option value="ريف دمشق">ريف دمشق</option>
+                <option value="حمص">حمص</option>
+                <option value="حماة">حماة</option>
+                <option value="دير الزور">دير الزور</option>
+                <option value="إدلب">إدلب</option>
+                <option value="درعا">درعا</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">المعلم</label>
+              <select id="attTeacher" class="form-select" onchange="loadStudentsForAtt()">
+                <option value="">-- اختر المعلم --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">التاريخ</label>
+              <input type="date" id="attDate" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">الفترة</label>
+              <input type="text" id="attPeriod" class="form-input" placeholder="مثال: الفترة الأولى">
+            </div>
+          </div>
+        </div>
+        
+        <div id="attendanceStudentsList" style="display:none">
+          <h3 style="padding:0 0 15px; color:var(--primary)">تسجيل حضور الطلاب:</h3>
+          <div class="attendance-grid" id="attendanceGrid"></div>
+          <div style="margin-top:20px; text-align:center">
+            <button class="btn btn-success btn-lg" onclick="saveAttendance()">💾 حفظ سجل الحضور</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ==================== التقارير ==================== -->
+      <div id="admin-section-reports" style="display:none" class="data-section">
+        <div class="section-title" style="margin-bottom:20px">📋 التقارير الإدارية</div>
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px">
+          <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+            <div style="font-size:48px">📊</div>
+            <h3 style="color:var(--primary); margin:10px 0">تقرير شامل</h3>
+            <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">تصدير كل البيانات دفعة واحدة</p>
+            <button class="btn btn-primary" onclick="exportAllData()">📥 تصدير الكل</button>
+          </div>
+          <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+            <div style="font-size:48px">🗺️</div>
+            <h3 style="color:var(--primary); margin:10px 0">تقرير المناطق</h3>
+            <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">مقارنة إحصائية بين المناطق السبع</p>
+            <button class="btn btn-gold" onclick="exportRegionsReportAdmin()">📥 تصدير</button>
+          </div>
+        </div>
+      </div>
+      
+    </main>
+  </div>
+</div>
+
+<!-- ==================== مودال إضافة/تعديل طالب ==================== -->
+<div class="modal-overlay" id="studentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="studentModalTitle">➕ إضافة طالب جديد</h3>
+      <button class="modal-close" onclick="closeAdminModal('studentModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="studentId">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">الاسم الكامل <span class="required">*</span></label>
+          <input type="text" id="studentName" class="form-input" placeholder="اسم الطالب">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الجنس</label>
+          <select id="studentGender" class="form-select">
+            <option value="">-- اختر --</option>
+            <option value="ذكر">ذكر</option>
+            <option value="أنثى">أنثى</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">المنطقة <span class="required">*</span></label>
+          <select id="studentRegion" class="form-select">
+            <option value="">-- اختر المنطقة --</option>
+            <option value="دمشق">دمشق</option>
+            <option value="ريف دمشق">ريف دمشق</option>
+            <option value="حمص">حمص</option>
+            <option value="حماة">حماة</option>
+            <option value="دير الزور">دير الزور</option>
+            <option value="إدلب">إدلب</option>
+            <option value="درعا">درعا</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">المعلم</label>
+          <select id="studentTeacher" class="form-select">
+            <option value="">-- اختر المعلم --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">المستوى</label>
+          <input type="text" id="studentLevel" class="form-input" placeholder="المستوى الدراسي">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الهاتف</label>
+          <input type="text" id="studentPhone" class="form-input" placeholder="رقم الهاتف">
+        </div>
+        <div class="form-group">
+          <label class="form-label">هاتف ولي الأمر</label>
+          <input type="text" id="studentParentPhone" class="form-input" placeholder="هاتف ولي الأمر">
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ الميلاد</label>
+          <input type="date" id="studentBirthDate" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ التسجيل</label>
+          <input type="date" id="studentEnrollDate" class="form-input" 
+                 value="${new Date().toISOString().split('T')[0]}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الحالة</label>
+          <select id="studentStatus" class="form-select">
+            <option value="نشط">نشط</option>
+            <option value="غير نشط">غير نشط</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">العنوان</label>
+          <input type="text" id="studentAddress" class="form-input" placeholder="العنوان التفصيلي">
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">ملاحظات</label>
+          <textarea id="studentNotes" class="form-textarea" placeholder="أي ملاحظات إضافية..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-success" onclick="saveStudent()">💾 حفظ</button>
+      <button class="btn btn-outline" onclick="closeAdminModal('studentModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== مودال إضافة/تعديل معلم ==================== -->
+<div class="modal-overlay" id="teacherModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="teacherModalTitle">➕ إضافة معلم جديد</h3>
+      <button class="modal-close" onclick="closeAdminModal('teacherModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="teacherId">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">الاسم الكامل <span class="required">*</span></label>
+          <input type="text" id="teacherName" class="form-input" placeholder="اسم المعلم">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الجنس</label>
+          <select id="teacherGender" class="form-select">
+            <option value="">-- اختر --</option>
+            <option value="ذكر">ذكر</option>
+            <option value="أنثى">أنثى</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">المنطقة <span class="required">*</span></label>
+          <select id="teacherRegion" class="form-select">
+            <option value="">-- اختر المنطقة --</option>
+            <option value="دمشق">دمشق</option>
+            <option value="ريف دمشق">ريف دمشق</option>
+            <option value="حمص">حمص</option>
+            <option value="حماة">حماة</option>
+            <option value="دير الزور">دير الزور</option>
+            <option value="إدلب">إدلب</option>
+            <option value="درعا">درعا</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">الهاتف</label>
+          <input type="text" id="teacherPhone" class="form-input" placeholder="رقم الهاتف">
+        </div>
+        <div class="form-group">
+          <label class="form-label">التخصص</label>
+          <input type="text" id="teacherSpecialty" class="form-input" placeholder="التخصص العلمي">
+        </div>
+        <div class="form-group">
+          <label class="form-label">المؤهل العلمي</label>
+          <input type="text" id="teacherQualification" class="form-input" placeholder="بكالوريوس / ماجستير...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">تاريخ الانضمام</label>
+          <input type="date" id="teacherJoinDate" class="form-input"
+                 value="${new Date().toISOString().split('T')[0]}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الحالة</label>
+          <select id="teacherStatus" class="form-select">
+            <option value="نشط">نشط</option>
+            <option value="غير نشط">غير نشط</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">ملاحظات</label>
+          <textarea id="teacherNotes" class="form-textarea" placeholder="أي ملاحظات إضافية..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-success" onclick="saveTeacher()">💾 حفظ</button>
+      <button class="btn btn-outline" onclick="closeAdminModal('teacherModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== مودال إضافة/تعديل إداري ==================== -->
+<div class="modal-overlay" id="adminUserModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="adminUserModalTitle">➕ إضافة إداري جديد</h3>
+      <button class="modal-close" onclick="closeAdminModal('adminUserModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="adminUserId">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">الاسم الكامل <span class="required">*</span></label>
+          <input type="text" id="adminUserName" class="form-input" placeholder="اسم الإداري">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الجنس</label>
+          <select id="adminUserGender" class="form-select">
+            <option value="">-- اختر --</option>
+            <option value="ذكر">ذكر</option>
+            <option value="أنثى">أنثى</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">المنطقة <span class="required">*</span></label>
+          <select id="adminUserRegion" class="form-select">
+            <option value="">-- اختر المنطقة --</option>
+            <option value="دمشق">دمشق</option>
+            <option value="ريف دمشق">ريف دمشق</option>
+            <option value="حمص">حمص</option>
+            <option value="حماة">حماة</option>
+            <option value="دير الزور">دير الزور</option>
+            <option value="إدلب">إدلب</option>
+            <option value="درعا">درعا</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">الهاتف</label>
+          <input type="text" id="adminUserPhone" class="form-input" placeholder="رقم الهاتف">
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">الدور الوظيفي</label>
+          <input type="text" id="adminUserRole" class="form-input" placeholder="مثال: مشرف منطقة / مدير إداري">
+        </div>
+        <div class="form-group">
+          <label class="form-label">الحالة</label>
+          <select id="adminUserStatus" class="form-select">
+            <option value="نشط">نشط</option>
+            <option value="غير نشط">غير نشط</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">ملاحظات</label>
+          <textarea id="adminUserNotes" class="form-textarea" placeholder="أي ملاحظات..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-success" onclick="saveAdminUser()">💾 حفظ</button>
+      <button class="btn btn-outline" onclick="closeAdminModal('adminUserModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال تأكيد الحذف -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header" style="background:linear-gradient(135deg,var(--danger),#E57373)">
+      <h3>⚠️ تأكيد الحذف</h3>
+      <button class="modal-close" onclick="closeAdminModal('deleteModal')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center; padding:30px">
+      <div style="font-size:60px; margin-bottom:15px">🗑️</div>
+      <p id="deleteMessage" style="font-size:16px; color:var(--text-dark)">هل أنت متأكد من حذف هذا العنصر؟</p>
+      <p style="color:var(--text-gray); font-size:13px; margin-top:10px">هذه العملية لا يمكن التراجع عنها</p>
+    </div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-danger" id="confirmDeleteBtn">🗑️ نعم، احذف</button>
+      <button class="btn btn-outline" onclick="closeAdminModal('deleteModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

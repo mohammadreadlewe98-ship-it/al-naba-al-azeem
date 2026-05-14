@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مؤسسة النبأ العظيم - البوابة التعليمية</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
+</head>
+<body class="islamic-pattern">
+
+  <!-- شريط التحميل -->
+  <div id="progressLoader" class="progress-loader" style="display:none"></div>
+
+  <!-- هيدر -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo-area">
+        <img src="logo.png" alt="النبأ العظيم" class="logo-img" 
+             onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%231B4F72\' width=\'100\' height=\'100\' rx=\'50\'/><text y=\'60\' x=\'50\' text-anchor=\'middle\' fill=\'gold\' font-size=\'40\'>ن</text></svg>'">
+        <div class="logo-text">
+          <h1>مؤسسة النبأ العظيم</h1>
+          <p>نظام إدارة البيانات التعليمية</p>
+        </div>
+      </div>
+      <div class="header-nav">
+        <button class="nav-btn active" onclick="showSection('overview')">📊 نظرة عامة</button>
+        <button class="nav-btn" onclick="showSection('students')">👨‍🎓 الطلاب</button>
+        <button class="nav-btn" onclick="showSection('teachers')">👨‍🏫 المعلمون</button>
+        <button class="nav-btn" onclick="showSection('reports')">📋 التقارير</button>
+      </div>
+    </div>
+    
+    <!-- شريط المناطق -->
+    <div class="filter-bar">
+      <span style="color:rgba(255,255,255,0.7); font-size:13px; margin-left:8px">📍 المنطقة:</span>
+      <button class="region-btn active" onclick="filterByRegion('all', this)">الكل</button>
+      <button class="region-btn" onclick="filterByRegion('دمشق', this)">دمشق</button>
+      <button class="region-btn" onclick="filterByRegion('ريف دمشق', this)">ريف دمشق</button>
+      <button class="region-btn" onclick="filterByRegion('حمص', this)">حمص</button>
+      <button class="region-btn" onclick="filterByRegion('حماة', this)">حماة</button>
+      <button class="region-btn" onclick="filterByRegion('دير الزور', this)">دير الزور</button>
+      <button class="region-btn" onclick="filterByRegion('إدلب', this)">إدلب</button>
+      <button class="region-btn" onclick="filterByRegion('درعا', this)">درعا</button>
+    </div>
+  </header>
+
+  <!-- إشعارات -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ==================== قسم النظرة العامة ==================== -->
+  <section id="section-overview" class="fade-in">
+    
+    <!-- البطاقات الإحصائية -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="loading"><div class="spinner"></div><p>جاري تحميل الإحصائيات...</p></div>
+    </div>
+
+    <!-- إحصائيات المناطق -->
+    <div style="padding: 0 30px 15px;">
+      <div class="section-title">📍 إحصائيات المناطق</div>
+    </div>
+    <div class="regions-grid" id="regionsGrid">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+
+  </section>
+
+  <!-- ==================== قسم الطلاب ==================== -->
+  <section id="section-students" class="data-section fade-in" style="display:none">
+    <div class="section-header">
+      <div class="section-title">👨‍🎓 بيانات الطلاب</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+        <select id="studentRegionFilter" class="form-input" style="width:150px" onchange="loadStudentsData()">
+          <option value="all">كل المناطق</option>
+          <option value="دمشق">دمشق</option>
+          <option value="ريف دمشق">ريف دمشق</option>
+          <option value="حمص">حمص</option>
+          <option value="حماة">حماة</option>
+          <option value="دير الزور">دير الزور</option>
+          <option value="إدلب">إدلب</option>
+          <option value="درعا">درعا</option>
+        </select>
+        <button class="btn btn-gold" onclick="exportStudentsExcel()">📥 تصدير Excel</button>
+        <button class="btn btn-primary" onclick="printStudentReport()">🖨️ تقرير PDF</button>
+      </div>
+    </div>
+    
+    <div class="table-container">
+      <div class="table-toolbar">
+        <input type="text" id="studentSearch" class="search-input" placeholder="🔍 ابحث بالاسم أو الرقم أو المنطقة..." oninput="filterStudentsTable()">
+        <select id="studentStatusFilter" class="form-input" style="width:130px" onchange="filterStudentsTable()">
+          <option value="all">كل الحالات</option>
+          <option value="نشط">نشط</option>
+          <option value="غير نشط">غير نشط</option>
+        </select>
+      </div>
+      
+      <div id="studentsTableWrapper">
+        <div class="loading"><div class="spinner"></div><p>جاري تحميل البيانات...</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== قسم المعلمين ==================== -->
+  <section id="section-teachers" class="data-section fade-in" style="display:none">
+    <div class="section-header">
+      <div class="section-title">👨‍🏫 بيانات المعلمين</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+        <select id="teacherRegionFilter" class="form-input" style="width:150px" onchange="loadTeachersData()">
+          <option value="all">كل المناطق</option>
+          <option value="دمشق">دمشق</option>
+          <option value="ريف دمشق">ريف دمشق</option>
+          <option value="حمص">حمص</option>
+          <option value="حماة">حماة</option>
+          <option value="دير الزور">دير الزور</option>
+          <option value="إدلب">إدلب</option>
+          <option value="درعا">درعا</option>
+        </select>
+        <button class="btn btn-gold" onclick="exportTeachersExcel()">📥 تصدير Excel</button>
+        <button class="btn btn-primary" onclick="printTeacherReport()">🖨️ تقرير PDF</button>
+      </div>
+    </div>
+    
+    <div class="table-container">
+      <div class="table-toolbar">
+        <input type="text" id="teacherSearch" class="search-input" placeholder="🔍 ابحث بالاسم أو التخصص..." oninput="filterTeachersTable()">
+      </div>
+      <div id="teachersTableWrapper">
+        <div class="loading"><div class="spinner"></div><p>جاري تحميل البيانات...</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== قسم التقارير ==================== -->
+  <section id="section-reports" class="data-section fade-in" style="display:none">
+    <div class="section-header">
+      <div class="section-title">📋 التقارير</div>
+    </div>
+    
+    <!-- بطاقات التقارير -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:20px; margin-bottom:30px">
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">👨‍🎓</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير الطلاب الفردي</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">استخراج تقرير كامل لطالب محدد</p>
+        <button class="btn btn-primary" onclick="openStudentReportModal()">استخراج التقرير</button>
+      </div>
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">📊</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير الطلاب الجماعي</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">تقرير شامل لجميع طلاب منطقة</p>
+        <button class="btn btn-success" onclick="openGroupStudentReport()">استخراج التقرير</button>
+      </div>
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">👨‍🏫</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير المعلم الفردي</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">إحصائيات معلم محدد وطلابه</p>
+        <button class="btn btn-primary" onclick="openTeacherReportModal()">استخراج التقرير</button>
+      </div>
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">📈</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير المعلمين الجماعي</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">إحصائيات جميع المعلمين</p>
+        <button class="btn btn-success" onclick="openGroupTeacherReport()">استخراج التقرير</button>
+      </div>
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">✅</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير الحضور</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">إحصائيات الحضور والغياب</p>
+        <button class="btn btn-gold" onclick="openAttendanceReport()">استخراج التقرير</button>
+      </div>
+      
+      <div style="background:white; border-radius:16px; padding:25px; box-shadow:var(--shadow-md); text-align:center">
+        <div style="font-size:48px; margin-bottom:15px">🗺️</div>
+        <h3 style="color:var(--primary); margin-bottom:10px">تقرير المناطق</h3>
+        <p style="color:var(--text-gray); font-size:13px; margin-bottom:15px">مقارنة إحصائية بين المناطق</p>
+        <button class="btn btn-gold" onclick="exportRegionsReport()">استخراج التقرير</button>
+      </div>
+    </div>
+    
+    <!-- عرض التقرير -->
+    <div id="reportDisplay" style="display:none" class="table-container">
+      <div id="reportContent"></div>
+    </div>
+  </section>
+
+  <!-- ==================== مودال تقرير طالب فردي ==================== -->
+  <div class="modal-overlay" id="studentReportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📋 تقرير طالب فردي</h3>
+        <button class="modal-close" onclick="closeModal('studentReportModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">اختر الطالب</label>
+          <select id="reportStudentSelect" class="form-select">
+            <option value="">-- اختر الطالب --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="generateStudentReport()">📊 إنشاء التقرير</button>
+        <button class="btn btn-gold" onclick="exportSingleStudentExcel()">📥 تصدير Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== مودال تقرير معلم فردي ==================== -->
+  <div class="modal-overlay" id="teacherReportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📋 تقرير معلم فردي</h3>
+        <button class="modal-close" onclick="closeModal('teacherReportModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">اختر المعلم</label>
+          <select id="reportTeacherSelect" class="form-select">
+            <option value="">-- اختر المعلم --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="generateTeacherReport()">📊 إنشاء التقرير</button>
+        <button class="btn btn-gold" onclick="exportSingleTeacherExcel()">📥 تصدير Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- الفوتر -->
+  <footer class="footer">
+    <p>© 2024 <span>مؤسسة النبأ العظيم</span> | جميع الحقوق محفوظة | تصميم إسلامي عصري</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
